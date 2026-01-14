@@ -177,7 +177,7 @@ THEMES = [
         grid_bg=(50, 40, 60),
         grid_border=(80, 60, 90),
         text_color=(255, 240, 200),
-        text_highlight=(255, 200, 100),
+        text_highlight=(255, 100, 50),  # 复古橙红色，经典8-bit风格
         panel_bg=(45, 35, 55),
         piece_colors=[(30, 30, 40), (255, 100, 100), (100, 255, 100), (100, 100, 255),
                      (255, 200, 100), (100, 200, 255), (255, 100, 200), (200, 255, 100)],
@@ -1468,15 +1468,22 @@ class AnimationManager:
         """添加屏幕震动效果"""
         self.screen_shake = ScreenShake(intensity, duration)
 
-    def add_combo_effects(self, combo_count, center_x, center_y):
-        """添加连击特效 - 根据连击数提供不同级别的视觉反馈"""
+    def add_combo_effects(self, combo_count, center_x, center_y, grid_x=None, grid_y=None, block_size=None, start_y=None):
+        """添加连击特效 - 在网格内部右上方显示 Combo x n"""
         if combo_count < 2:
             return  # 无连击，无特效
 
-        grid_x, grid_y = GRID_X_OFFSET, GRID_Y_OFFSET
-        grid_width = GRID_WIDTH * BLOCK_SIZE
+        if grid_x is None:
+            grid_x, grid_y = GRID_X_OFFSET, GRID_Y_OFFSET
+            block_size = BLOCK_SIZE
 
-        # 连击级别判定
+        grid_width = GRID_WIDTH * block_size
+
+        # 计算动态位置：网格内部右上方，消除行上方2cm（约75像素）
+        combo_x = grid_x + grid_width - int(grid_width * 0.2)  # 右侧20%位置
+        combo_y = grid_y + (start_y * block_size) - 75  # 消除行上方75像素（约2cm）
+
+        # 连击级别判定（用于特效强度）
         if combo_count >= 10:
             # 传奇连击（10+）：史诗级特效
             combo_level = "LEGENDARY!"
@@ -1522,13 +1529,10 @@ class AnimationManager:
             particle_count = 20
             speed_mult = 1.0
 
-        # 添加连击等级文字
+        # 添加 Combo x n 文字（显示在网格内部右上方，消除行上方2cm处）
         color = colors[0]
-        self.floating_texts.append(FloatingText(combo_level, center_x, center_y - 80, color, font_size))
-
-        # 添加连击计数文字（例如 "5x COMBO!"）
-        combo_color = colors[-1] if len(colors) > 1 else colors[0]
-        self.floating_texts.append(FloatingText(f"{combo_count}x COMBO!", center_x, center_y - 40, combo_color, int(font_size * 0.7)))
+        combo_text = f"Combo x{combo_count}"
+        self.floating_texts.append(FloatingText(combo_text, combo_x, combo_y, color, font_size))
 
         # 添加震动效果
         self.add_screen_shake(shake_intensity, 300)
@@ -1701,13 +1705,6 @@ class AnimationManager:
                 s = pygame.Surface((WINDOW_WIDTH, BLOCK_SIZE), pygame.SRCALPHA)
                 s.fill((255, 255, 255, anim['alpha']))
                 surface.blit(s, (0, GRID_Y_OFFSET + anim['y'] * BLOCK_SIZE))
-
-                # 绘制连击文字
-                if anim['combo'] > 1:
-                    font = pygame.font.Font(None, int(36 * anim['scale']))
-                    text = font.render(f"{anim['combo']}x COMBO!", True, (255, 255, 100))
-                    text_rect = text.get_rect(center=(WINDOW_WIDTH // 2, GRID_Y_OFFSET + anim['y'] * BLOCK_SIZE))
-                    surface.blit(text, text_rect)
 
 
 class Statistics:
@@ -2573,8 +2570,9 @@ class Tetris:
                 # 添加光带动画（会自动触发震动）
                 self.animation_manager.add_light_beam(start_y, end_y, grid_rect, lines_count, self.neon_mode)
 
-                # 添加增强连击特效
-                self.animation_manager.add_combo_effects(self.combo_count, center_x, center_y)
+                # 添加增强连击特效 - 显示在网格内部右上方，消除行上方2cm处
+                self.animation_manager.add_combo_effects(self.combo_count, center_x, center_y,
+                                                        grid_x, grid_y, block_size, start_y)
 
             # 保留旧的粒子效果（兼容）
             for line_y in lines_to_clear:
@@ -3524,8 +3522,8 @@ class Tetris:
         pygame.draw.rect(self.screen, (40, 40, 50), dropdown_rect, border_radius=int(8 * scale))
         pygame.draw.rect(self.screen, (80, 80, 100), dropdown_rect, 2, border_radius=int(8 * scale))
 
-        # 标题
-        title_surf = small_font.render("🎨 主题", True, (200, 200, 220))
+        # 标题（去掉表情符号，使用与其他设置一致的字体）
+        title_surf = small_font.render("主题", True, (200, 200, 220))
         self.screen.blit(title_surf, (x + int(12 * scale), y + int(8 * scale)))
 
         # 当前主题名称
@@ -3586,11 +3584,12 @@ class Tetris:
                 theme_name_surf = small_font.render(theme_name, True, name_color)
                 self.screen.blit(theme_name_surf, (x + int(15 * scale), item_y + int(6 * scale)))
 
-                # 如果是当前主题，添加"✓"
+                # 如果是当前主题，添加勾选标记
                 if is_current:
-                    check_surf = small_font.render("✓", True, theme.text_highlight)
-                    check_x = x + width - int(30 * scale)
-                    self.screen.blit(check_surf, (check_x, item_y + int(6 * scale)))
+                    # 使用简单的圆点代替特殊字符
+                    dot_x = x + width - int(20 * scale)
+                    dot_y = item_y + int(13 * scale)
+                    pygame.draw.circle(self.screen, theme.text_highlight, (dot_x, dot_y), int(3 * scale))
 
 
     def _draw_volume_slider(self, x, y, width, height, title, volume, font, small_font, scale):
