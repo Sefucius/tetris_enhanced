@@ -496,106 +496,252 @@ class SoundManager:
         return pygame.mixer.Sound(buffer=sound_array)
 
     def generate_background_music(self, theme=None):
-        """生成背景音乐（循环旋律）- 根据主题生成不同风格的音乐"""
+        """生成背景音乐（循环旋律）- 为每个主题生成独特的主题曲"""
         if theme is None:
             # 默认使用霓虹城市主题
             theme = THEMES[0]
 
+        # 🔧 修复bug：先停止旧音乐，避免新旧音乐重叠
+        if self.background_music:
+            self.background_music.stop()
+
         sample_rate = 44100
-        duration = 8.0  # 8秒循环
+        duration = 20.0  # 延长到20秒，让循环不那么频繁
         n_samples = int(sample_rate * duration)
 
-        # 根据主题的调式选择旋律
-        # 大调音阶: C(261.63), D(293.66), E(329.63), F(349.23), G(392.00), A(440.00), B(493.88)
-        # 小调音阶: C(261.63), D(293.66), Eb(311.13), F(349.23), G(392.00), Ab(415.30), Bb(466.16)
+        # 🎵 为每个主题设计独特的旋律和音色
+        # 基础频率：C4=261.63, D4=293.66, E4=329.63, F4=349.23, G4=392.00, A4=440.00, B4=493.88
 
-        if theme.music_scale == "minor":
-            # 小调旋律（更忧郁、神秘）
+        if theme.name == "neon_city":
+            # 🌆 霓虹城市 - 电子音乐风格，快速节奏，上升旋律
             base_melody = [
-                (261.63, 0.5), (293.66, 0.5), (311.13, 0.5), (349.23, 0.5),  # C D Eb F
-                (392.00, 1.0), (349.23, 0.5), (311.13, 0.5), (293.66, 0.5),  # G F Eb D
-                (261.63, 1.0), (293.66, 0.5), (261.63, 0.5), (392.00, 1.0),  # C D C G
-                (349.23, 0.5), (311.13, 0.5), (293.66, 0.5), (261.63, 2.0),  # F Eb D C
-                (349.23, 0.5), (415.30, 0.5), (466.16, 0.5), (415.30, 0.5), (349.23, 1.0),  # F Ab Bb Ab F
-                (311.13, 0.5), (293.66, 0.5), (261.63, 1.0), (293.66, 0.5), (261.63, 2.0),  # Eb D C D C
+                # 第一段：上升旋律
+                (261.63, 0.3), (329.63, 0.3), (392.00, 0.3), (523.25, 0.3),  # C E G C5 (上升)
+                (440.00, 0.2), (392.00, 0.2), (349.23, 0.4),  # A G F (下降)
+                (293.66, 0.3), (349.23, 0.3), (440.00, 0.3), (523.25, 0.4),  # D F A C5
+                (493.88, 0.2), (440.00, 0.2), (392.00, 0.4),  # B A G
+                # 第二段：变奏
+                (523.25, 0.3), (440.00, 0.3), (392.00, 0.3), (349.23, 0.3),  # C5 A G F
+                (392.00, 0.2), (440.00, 0.2), (523.25, 0.4),  # G A C5
+                (261.63, 0.3), (329.63, 0.3), (392.00, 0.6),  # C E G (长音)
+                (349.23, 0.3), (440.00, 0.3), (523.25, 0.3), (659.25, 0.6),  # F A C5 E5
+                # 第三段：高潮
+                (659.25, 0.3), (523.25, 0.3), (440.00, 0.3), (392.00, 0.3),  # E5 C5 A G
+                (440.00, 0.4), (523.25, 0.4), (659.25, 0.6),  # A C5 E5
+                (523.25, 0.3), (392.00, 0.3), (329.63, 0.3), (261.63, 0.6),  # C5 G E C
+                (392.00, 0.5), (349.23, 0.5), (329.63, 0.5), (293.66, 0.5), (261.63, 0.8),  # G F E D C
             ]
+            wave_type = "electronic"
+            main_vol, third_vol, fifth_vol, bass_vol, overall_vol = 0.35, 0.25, 0.20, 0.30, 0.32
+            use_arpeggio = True
+
+        elif theme.name == "space_scifi":
+            # 🚀 太空科幻 - 神秘、空灵，使用五声音阶
+            base_melody = [
+                # 第一段：空灵的开场
+                (261.63, 0.8), (293.66, 0.6), (329.63, 0.8),  # C D E (缓慢)
+                (392.00, 1.0),  # G (长音)
+                (349.23, 0.6), (329.63, 0.6), (293.66, 0.8),  # F E D
+                (261.63, 1.2),  # C (更长)
+                # 第二段：上升
+                (329.63, 0.6), (392.00, 0.6), (440.00, 0.8),  # E G A
+                (392.00, 1.0),  # G
+                (293.66, 0.6), (261.63, 0.8), (220.00, 1.0),  # D C A3
+                (261.63, 1.2), (293.66, 0.8), (329.63, 1.0),  # C D E
+                # 第三段：回归
+                (392.00, 0.8), (349.23, 0.6), (329.63, 0.8),  # G F E
+                (293.66, 0.8), (261.63, 1.0), (220.00, 1.2), (196.00, 1.5),  # D C A3 G3
+            ]
+            wave_type = "soft"
+            main_vol, third_vol, fifth_vol, bass_vol, overall_vol = 0.30, 0.20, 0.15, 0.20, 0.25
+            use_arpeggio = False
+
+        elif theme.name == "retro_pixel":
+            # 👾 复古像素 - 8-bit风格，快速跳跃，方波音色
+            base_melody = [
+                # 第一段：快速下降
+                (523.25, 0.15), (493.88, 0.15), (440.00, 0.15), (392.00, 0.15),  # C5 B A G (快速下降)
+                (440.00, 0.15), (493.88, 0.15), (523.25, 0.3),  # A B C5
+                (392.00, 0.15), (349.23, 0.15), (329.63, 0.15), (293.66, 0.15),  # G F E D
+                (349.23, 0.15), (392.00, 0.15), (440.00, 0.3),  # F G A
+                # 第二段：跳跃上升
+                (523.25, 0.15), (659.25, 0.15), (783.99, 0.3),  # C5 E5 G5
+                (659.25, 0.15), (523.25, 0.15), (440.00, 0.15), (392.00, 0.3),  # E5 C5 A G
+                (440.00, 0.15), (493.88, 0.15), (523.25, 0.15), (493.88, 0.15), (440.00, 0.3),  # A B C5 B A
+                # 第三段：高潮
+                (783.99, 0.15), (659.25, 0.15), (523.25, 0.15), (440.00, 0.15), (392.00, 0.15), (349.23, 0.3),  # G5 E5 C5 A G F
+                (392.00, 0.15), (440.00, 0.15), (523.25, 0.15), (659.25, 0.15), (523.25, 0.4),  # G A C5 E5 C5
+                (440.00, 0.2), (392.00, 0.2), (349.23, 0.2), (293.66, 0.2), (261.63, 0.6),  # A G F E D C
+            ]
+            wave_type = "square"
+            main_vol, third_vol, fifth_vol, bass_vol, overall_vol = 0.40, 0.10, 0.10, 0.25, 0.35
+            use_arpeggio = True
+
+        elif theme.name == "ocean_world":
+            # 🌊 海洋世界 - 流畅、波动，像海浪一样的旋律
+            base_melody = [
+                # 第一段：海浪起伏
+                (261.63, 0.6), (293.66, 0.4), (329.63, 0.6), (293.66, 0.4),  # C D E D (波浪)
+                (349.23, 0.8), (329.63, 0.4), (293.66, 0.6),  # F E D
+                (261.63, 0.6), (293.66, 0.4), (349.23, 0.6), (392.00, 0.4),  # C D F G
+                (349.23, 0.8), (329.63, 0.6), (293.66, 0.4), (261.63, 0.8),  # F E D C
+                # 第二段：深海
+                (220.00, 0.6), (261.63, 0.6), (293.66, 0.8),  # A3 C D
+                (261.63, 0.6), (233.08, 0.6), (220.00, 1.0),  # C Bb3 A3
+                (196.00, 0.8), (220.00, 0.6), (261.63, 0.8), (293.66, 0.6),  # G3 A3 C D
+                # 第三段：回归海面
+                (261.63, 0.8), (293.66, 0.6), (329.63, 0.8), (349.23, 0.6),  # C D E F
+                (329.63, 0.6), (293.66, 0.6), (261.63, 0.8), (233.08, 0.6), (220.00, 1.2),  # E D C Bb3 A3
+            ]
+            wave_type = "smooth"
+            main_vol, third_vol, fifth_vol, bass_vol, overall_vol = 0.32, 0.25, 0.18, 0.28, 0.28
+            use_arpeggio = False
+
+        elif theme.name == "sunset_dusk":
+            # 🌅 日落黄昏 - 温暖、放松，小调音阶
+            base_melody = [
+                # 第一段：温暖开场
+                (261.63, 0.6), (293.66, 0.6), (311.13, 0.8),  # C D Eb (小调)
+                (349.23, 0.8), (311.13, 0.6), (293.66, 0.6),  # F Eb D
+                (261.63, 0.8), (293.66, 0.6), (261.63, 0.8), (220.00, 0.6),  # C D C A3
+                # 第二段：温暖情感
+                (233.08, 0.8), (261.63, 0.6), (311.13, 0.8), (349.23, 0.8),  # Bb3 C Eb F
+                (311.13, 0.6), (293.66, 0.6), (261.63, 1.0),  # Eb D C
+                (233.08, 0.8), (220.00, 0.8), (196.00, 1.0),  # Bb3 A3 G3
+                (220.00, 0.6), (233.08, 0.6), (261.63, 0.8), (293.66, 0.6),  # A3 Bb3 C D
+                # 第三段：日落余晖
+                (311.13, 0.8), (349.23, 0.6), (311.13, 0.6), (293.66, 0.6), (261.63, 1.0),  # Eb F Eb D C
+                (233.08, 0.8), (220.00, 0.8), (196.00, 0.8), (174.61, 1.5),  # Bb3 A3 G3 F3
+            ]
+            wave_type = "warm"
+            main_vol, third_vol, fifth_vol, bass_vol, overall_vol = 0.30, 0.22, 0.16, 0.25, 0.26
+            use_arpeggio = False
+
+        elif theme.name == "forest_mystic":
+            # 🌲 森林秘境 - 清新、自然，使用五声音阶
+            base_melody = [
+                # 第一段：森林晨曦
+                (261.63, 0.5), (329.63, 0.5), (392.00, 0.6),  # C E G (五声音阶)
+                (329.63, 0.4), (392.00, 0.4), (440.00, 0.6),  # E G A
+                (392.00, 0.5), (329.63, 0.5), (261.63, 0.6),  # G E C
+                # 第二段：森林漫步
+                (293.66, 0.4), (349.23, 0.4), (392.00, 0.6),  # D F G
+                (440.00, 0.5), (392.00, 0.5), (329.63, 0.6),  # A G E
+                (261.63, 0.6), (329.63, 0.6), (392.00, 0.8), (329.63, 0.6), (261.63, 1.0),  # C E G E C
+                # 第三段：森林深处
+                (220.00, 0.6), (261.63, 0.5), (329.63, 0.6), (392.00, 0.5), (440.00, 0.8),  # A3 C E G A
+                (392.00, 0.6), (329.63, 0.6), (261.63, 0.6), (220.00, 0.6), (196.00, 1.2),  # G E C A3 G3
+                (261.63, 0.8), (329.63, 0.6), (392.00, 0.8), (329.63, 0.6), (261.63, 1.5),  # C E G E C
+            ]
+            wave_type = "nature"
+            main_vol, third_vol, fifth_vol, bass_vol, overall_vol = 0.33, 0.20, 0.18, 0.22, 0.28
+            use_arpeggio = False
+
         else:
-            # 大调旋律（明亮、欢快）
+            # 默认旋律（大调）
             base_melody = [
-                (261.63, 0.5), (293.66, 0.5), (329.63, 0.5), (349.23, 0.5),  # C D E F
-                (392.00, 1.0), (349.23, 0.5), (329.63, 0.5), (293.66, 0.5),  # G F E D
-                (261.63, 1.0), (293.66, 0.5), (261.63, 0.5), (392.00, 1.0),  # C D C G
-                (349.23, 0.5), (329.63, 0.5), (293.66, 0.5), (261.63, 2.0),  # F E D C
-                (349.23, 0.5), (392.00, 0.5), (440.00, 0.5), (392.00, 0.5), (349.23, 1.0),  # F G A G F
-                (329.63, 0.5), (293.66, 0.5), (261.63, 1.0), (293.66, 0.5), (261.63, 2.0),  # E D C D C
+                (261.63, 0.5), (293.66, 0.5), (329.63, 0.5), (349.23, 0.5),
+                (392.00, 1.0), (349.23, 0.5), (329.63, 0.5), (293.66, 0.5),
+                (261.63, 1.0), (293.66, 0.5), (261.63, 0.5), (392.00, 1.0),
             ]
+            wave_type = "smooth"
+            main_vol, third_vol, fifth_vol, bass_vol, overall_vol = 0.35, 0.25, 0.20, 0.30, 0.30
+            use_arpeggio = False
 
-        # 根据主题的风格调整旋律
+        # 根据主题的速度调整旋律
         melody = []
         for freq, dur in base_melody:
-            # 应用速度调整
             adjusted_dur = dur / theme.music_speed
             melody.append((freq, adjusted_dur))
 
         samples = []
         current_time = 0
 
-        # 根据音乐风格调整参数
-        if theme.music_style == "electronic":
-            main_volume = 0.4
-            third_volume = 0.2
-            fifth_volume = 0.15
-            bass_volume = 0.3
-            overall_volume = 0.3
-        elif theme.music_style == "retro":
-            main_volume = 0.5
-            third_volume = 0.1
-            fifth_volume = 0.1
-            bass_volume = 0.2
-            overall_volume = 0.35
-        elif theme.music_style == "peaceful":
-            main_volume = 0.35
-            third_volume = 0.25
-            fifth_volume = 0.2
-            bass_volume = 0.25
-            overall_volume = 0.25
-        else:  # energetic
-            main_volume = 0.45
-            third_volume = 0.15
-            fifth_volume = 0.2
-            bass_volume = 0.35
-            overall_volume = 0.35
-
         for freq, dur in melody:
             note_samples = int(sample_rate * dur)
             for t in range(note_samples):
-                # 使用和弦和包络
                 t_total = current_time + t
                 value = 0
 
-                # 主音
-                value += main_volume * math.sin(2 * math.pi * freq * t_total / sample_rate)
-                # 三度和弦
-                value += third_volume * math.sin(2 * math.pi * (freq * 1.2599) * t_total / sample_rate)
-                # 五度和弦
-                value += fifth_volume * math.sin(2 * math.pi * (freq * 1.5) * t_total / sample_rate)
+                # 根据波形类型生成不同的音色
+                if wave_type == "electronic":
+                    # 电子音：主音 + 高频泛音
+                    value += main_vol * math.sin(2 * math.pi * freq * t_total / sample_rate)
+                    value += third_vol * 0.5 * math.sin(2 * math.pi * (freq * 2) * t_total / sample_rate)
+                    value += fifth_vol * 0.3 * math.sin(2 * math.pi * (freq * 3) * t_total / sample_rate)
+                    # 添加电子颤音效果
+                    vibrato = 0.95 + 0.05 * math.sin(2 * math.pi * 5 * t_total / sample_rate)
+                    value *= vibrato
+
+                elif wave_type == "square":
+                    # 方波（8-bit风格）
+                    sign = 1 if math.sin(2 * math.pi * freq * t_total / sample_rate) > 0 else -1
+                    value += main_vol * sign * 0.7
+                    # 添加泛音
+                    value += third_vol * 0.3 * math.sin(2 * math.pi * (freq * 2) * t_total / sample_rate)
+
+                elif wave_type == "soft":
+                    # 柔和音：纯净的正弦波
+                    value += main_vol * math.sin(2 * math.pi * freq * t_total / sample_rate)
+                    value += third_vol * 0.5 * math.sin(2 * math.pi * (freq * 1.5) * t_total / sample_rate)
+
+                elif wave_type == "warm":
+                    # 温暖音：更多泛音
+                    value += main_vol * math.sin(2 * math.pi * freq * t_total / sample_rate)
+                    value += third_vol * math.sin(2 * math.pi * (freq * 1.2599) * t_total / sample_rate)
+                    value += fifth_vol * 0.8 * math.sin(2 * math.pi * (freq * 1.5) * t_total / sample_rate)
+                    value += bass_vol * 0.5 * math.sin(2 * math.pi * (freq * 2) * t_total / sample_rate)
+
+                elif wave_type == "smooth":
+                    # 平滑音：标准和弦
+                    value += main_vol * math.sin(2 * math.pi * freq * t_total / sample_rate)
+                    value += third_vol * math.sin(2 * math.pi * (freq * 1.2599) * t_total / sample_rate)
+                    value += fifth_vol * math.sin(2 * math.pi * (freq * 1.5) * t_total / sample_rate)
+
+                elif wave_type == "nature":
+                    # 自然音：木管乐器感觉
+                    value += main_vol * math.sin(2 * math.pi * freq * t_total / sample_rate)
+                    # 添加轻微的噪音特性
+                    noise = 0.02 * (random.random() - 0.5)
+                    value += noise
+
+                # 琶音效果（用于电子和复古风格）
+                if use_arpeggio:
+                    arpeggio_speed = 8
+                    arpeggio_note = int(t_total * arpeggio_speed) % 3
+                    if arpeggio_note == 1:
+                        value *= 0.8
+                    elif arpeggio_note == 2:
+                        value *= 0.6
 
                 # 包络（淡入淡出）
                 env_pos = t / note_samples
                 envelope = 1.0
-                if env_pos < 0.1:  # Attack
-                    envelope = env_pos / 0.1
-                elif env_pos > 0.8:  # Release
-                    envelope = (1.0 - env_pos) / 0.2
+                if env_pos < 0.15:  # Attack
+                    envelope = env_pos / 0.15
+                elif env_pos > 0.75:  # Release
+                    envelope = (1.0 - env_pos) / 0.25
 
                 # 低音（bass）
                 bass_freq = freq / 2
-                value += bass_volume * math.sin(2 * math.pi * bass_freq * t_total / sample_rate)
+                value += bass_vol * math.sin(2 * math.pi * bass_freq * t_total / sample_rate)
 
-                sample_value = int(overall_volume * 32767 * value * envelope)
+                sample_value = int(overall_vol * 32767 * value * envelope)
                 samples.append([sample_value, sample_value])
 
             current_time += note_samples
+
+        # 🎵 添加全局淡出效果，让循环更自然
+        # 在最后3秒逐渐降低音量
+        fade_out_samples = int(sample_rate * 3.0)  # 最后3秒
+        for i in range(len(samples)):
+            if i >= len(samples) - fade_out_samples:
+                # 计算淡出进度 (0.0 到 1.0)
+                fade_progress = (i - (len(samples) - fade_out_samples)) / fade_out_samples
+                # 使用余弦曲线实现平滑淡出
+                fade_factor = 0.3 + 0.7 * (1 + math.cos(fade_progress * math.pi)) / 2
+                samples[i][0] = int(samples[i][0] * fade_factor)
+                samples[i][1] = int(samples[i][1] * fade_factor)
 
         # 填充到完整长度
         while len(samples) < n_samples:
@@ -2001,32 +2147,52 @@ class Tetris:
         self.sound_manager.generate_background_music(self.current_theme)
 
     def draw_theme_background(self):
-        """根据主题绘制背景效果"""
+        """根据主题绘制增强的背景效果"""
         theme = self.current_theme
         width, height = self.window_width, self.window_height
+        current_time = pygame.time.get_ticks()
 
         # 根据主题效果类型绘制不同的背景
         if theme.bg_effect_type == "gradient":
-            # 垂直渐变背景
-            for y in range(height):
+            # 🌆 霓虹城市 - 动态扫描线渐变
+            # 绘制基础渐变
+            for y in range(0, height, 2):  # 优化：每2行绘制一次
                 ratio = y / height
                 r = int(theme.bg_color[0] * (1 - ratio) + theme.bg_color2[0] * ratio)
                 g = int(theme.bg_color[1] * (1 - ratio) + theme.bg_color2[1] * ratio)
                 b = int(theme.bg_color[2] * (1 - ratio) + theme.bg_color2[2] * ratio)
-                pygame.draw.line(self.screen, (r, g, b), (0, y), (width, y))
+                pygame.draw.line(self.screen, (r, g, b), (0, y), (width, y), 2)
+
+            # 添加扫描线效果
+            scan_line_y = int((current_time * 0.05) % height)
+            scan_alpha = int(30 + 20 * math.sin(current_time * 0.005))
+            scan_surface = pygame.Surface((width, 3), pygame.SRCALPHA)
+            scan_surface.fill((*theme.text_highlight, scan_alpha))
+            self.screen.blit(scan_surface, (0, scan_line_y))
+
+            # 添加网格线（赛博朋克风格）
+            grid_spacing = 50
+            for x in range(0, width, grid_spacing):
+                pygame.draw.line(self.screen, (*theme.grid_border, 30), (x, 0), (x, height), 1)
+            for y in range(0, height, grid_spacing):
+                pygame.draw.line(self.screen, (*theme.grid_border, 30), (0, y), (width, y), 1)
 
         elif theme.bg_effect_type == "stars":
-            # 星空背景 - 先填充深色
+            # 🚀 太空科幻 - 动态星空 + 流星
             self.screen.fill(theme.bg_color)
-            # 绘制星星（使用随机位置但固定种子，避免每帧闪烁）
+
+            # 绘制星星（使用时间相关种子，让星星缓慢移动）
             import hashlib
-            seed = int(hashlib.md5(str(pygame.time.get_ticks() // 1000).encode()).hexdigest(), 16) % 1000
+            seed = int(hashlib.md5(str(current_time // 2000).encode()).hexdigest(), 16) % 1000
             random.seed(seed)
-            for _ in range(100):
+
+            for i in range(150):
                 x = random.randint(0, width)
                 y = random.randint(0, height)
                 size = random.randint(1, 3)
-                brightness = random.randint(150, 255)
+                # 闪烁效果
+                twinkle = math.sin(current_time * 0.003 + i * 0.5) * 0.5 + 0.5
+                brightness = int(150 + 105 * twinkle)
                 color = (
                     min(255, theme.bg_color2[0] + brightness),
                     min(255, theme.bg_color2[1] + brightness),
@@ -2034,62 +2200,162 @@ class Tetris:
                 )
                 pygame.draw.circle(self.screen, color, (x, y), size)
 
+            # 流星效果
+            meteor_count = 2
+            for i in range(meteor_count):
+                meteor_x = int((current_time * 0.15 + i * 500) % (width + 200)) - 100
+                meteor_y = int((current_time * 0.08 + i * 300) % (height + 200)) - 100
+                meteor_length = 30 + i * 20
+                # 流星尾迹
+                for j in range(meteor_length):
+                    alpha = int(50 * (1 - j / meteor_length))
+                    tail_x = meteor_x - j * 2
+                    tail_y = meteor_y - j
+                    if 0 <= tail_x < width and 0 <= tail_y < height:
+                        s = pygame.Surface((2, 1), pygame.SRCALPHA)
+                        s.fill((*theme.text_highlight, alpha))
+                        self.screen.blit(s, (tail_x, tail_y))
+
         elif theme.bg_effect_type == "particles":
-            # 粒子背景 - 浮动的小方块
+            # 👾 复古像素 - 浮动像素方块
             self.screen.fill(theme.bg_color)
+
             import hashlib
-            seed = int(hashlib.md5(str(pygame.time.get_ticks() // 500).encode()).hexdigest(), 16) % 1000
+            seed = int(hashlib.md5(str(current_time // 400).encode()).hexdigest(), 16) % 1000
             random.seed(seed)
-            for _ in range(30):
+
+            # 浮动的像素方块（更大、更多）
+            for _ in range(50):
                 x = random.randint(0, width)
                 y = random.randint(0, height)
-                size = random.randint(3, 8)
+                size = random.randint(4, 12)
                 color = random.choice(theme.particle_colors)
-                # 添加透明度
+                alpha = random.randint(40, 100)
                 s = pygame.Surface((size, size), pygame.SRCALPHA)
-                alpha = random.randint(30, 80)
                 s.fill((color[0], color[1], color[2], alpha))
                 self.screen.blit(s, (x, y))
 
+            # 添加像素网格线
+            grid_size = 20
+            for x in range(0, width, grid_size):
+                pygame.draw.line(self.screen, (*theme.grid_border, 20), (x, 0), (x, height), 1)
+            for y in range(0, height, grid_size):
+                pygame.draw.line(self.screen, (*theme.grid_border, 20), (0, y), (width, y), 1)
+
         elif theme.bg_effect_type == "waves":
-            # 波浪效果背景
+            # 🌊 海洋世界 - 动态波浪 + 气泡
             self.screen.fill(theme.bg_color)
+
             import hashlib
-            seed = int(hashlib.md5(str(pygame.time.get_ticks() // 200).encode()).hexdigest(), 16) % 1000
+            seed = int(hashlib.md5(str(current_time // 150).encode()).hexdigest(), 16) % 1000
             random.seed(seed)
-            for i in range(5):
-                wave_y = int(height * (0.2 + 0.15 * i))
-                amplitude = 10 + i * 5
-                for x in range(0, width, 5):
-                    wave_offset = math.sin(x * 0.02 + pygame.time.get_ticks() * 0.001 + i) * amplitude
+
+            # 多层动态波浪
+            for layer in range(6):
+                wave_y = int(height * (0.15 + 0.14 * layer))
+                amplitude = 12 + layer * 4
+                phase_shift = layer * 0.8
+
+                for x in range(0, width, 4):
+                    wave_offset = math.sin(x * 0.015 + current_time * 0.001 + phase_shift) * amplitude
                     y = wave_y + int(wave_offset)
-                    alpha = 30 - i * 5
+                    alpha = 35 - layer * 5
                     color = (
-                        min(255, theme.bg_color2[0] + 50),
-                        min(255, theme.bg_color2[1] + 50),
-                        min(255, theme.bg_color2[2] + 50)
+                        min(255, theme.bg_color2[0] + 60),
+                        min(255, theme.bg_color2[1] + 60),
+                        min(255, theme.bg_color2[2] + 60)
                     )
-                    s = pygame.Surface((5, 2), pygame.SRCALPHA)
+                    s = pygame.Surface((6, 2 + layer), pygame.SRCALPHA)
                     s.fill((color[0], color[1], color[2], alpha))
                     self.screen.blit(s, (x, y))
 
+            # 气泡效果
+            bubble_count = 15
+            for i in range(bubble_count):
+                bubble_x = int((current_time * 0.03 + i * 137) % width)
+                bubble_y = int(height - (current_time * 0.05 + i * 89) % height)
+                bubble_size = 3 + i % 5
+                bubble_alpha = 30 + i * 5
+                pygame.draw.circle(self.screen, (*theme.text_highlight, bubble_alpha),
+                                 (bubble_x, bubble_y), bubble_size, 1)
+
         elif theme.bg_effect_type == "aurora":
-            # 极光效果 - 使用多个渐变叠加
+            # 🌲 森林秘境 - 极光效果 + 萤火虫
             self.screen.fill(theme.bg_color)
-            # 绘制极光带
+
             import hashlib
-            seed = int(hashlib.md5(str(pygame.time.get_ticks() // 300).encode()).hexdigest(), 16) % 1000
+            seed = int(hashlib.md5(str(current_time // 250).encode()).hexdigest(), 16) % 1000
             random.seed(seed)
-            for i in range(3):
-                aurora_y = int(height * (0.3 + 0.2 * i))
+
+            # 多层极光带
+            for i in range(4):
+                aurora_y = int(height * (0.25 + 0.18 * i))
                 color = theme.particle_colors[i % len(theme.particle_colors)]
-                for x in range(0, width, 10):
-                    wave_offset = math.sin(x * 0.01 + pygame.time.get_ticks() * 0.002 + i * 2) * 30
+
+                for x in range(0, width, 8):
+                    # 更复杂的波浪运动
+                    wave_offset = math.sin(x * 0.008 + current_time * 0.0015 + i * 1.5) * 40
+                    wave_offset += math.sin(x * 0.015 + current_time * 0.002 + i) * 20
                     y = aurora_y + int(wave_offset)
-                    s = pygame.Surface((15, 20 + i * 10), pygame.SRCALPHA)
-                    alpha = 20 - i * 5
+
+                    s = pygame.Surface((12, 25 + i * 8), pygame.SRCALPHA)
+                    alpha = 25 - i * 5
                     s.fill((color[0], color[1], color[2], alpha))
                     self.screen.blit(s, (x, y))
+
+            # 萤火虫效果
+            firefly_count = 20
+            for i in range(firefly_count):
+                firefly_x = int((math.sin(current_time * 0.0005 + i * 0.5) * 0.5 + 0.5) * width)
+                firefly_y = int((math.cos(current_time * 0.0003 + i * 0.7) * 0.5 + 0.5) * height)
+                firefly_size = 2 + (i % 3)
+                # 闪烁效果
+                firefly_alpha = int(50 + 50 * math.sin(current_time * 0.005 + i))
+                pygame.draw.circle(self.screen, (*theme.text_highlight, firefly_alpha),
+                                 (firefly_x, firefly_y), firefly_size)
+
+        elif theme.name == "sunset_dusk":
+            # 🌅 日落黄昏 - 温暖渐变 + 光线
+            # 基础渐变
+            for y in range(0, height, 2):
+                ratio = y / height
+                # 三色渐变（模拟日落）
+                if ratio < 0.3:
+                    r = int(theme.bg_color[0])
+                    g = int(theme.bg_color[1] * (1 - ratio / 0.3) + theme.bg_color2[1] * (ratio / 0.3))
+                    b = int(theme.bg_color[2])
+                elif ratio < 0.7:
+                    r = int(theme.bg_color2[0] * (1 - (ratio - 0.3) / 0.4) + theme.bg_color[0] * ((ratio - 0.3) / 0.4))
+                    g = int(theme.bg_color2[1])
+                    b = int(theme.bg_color[2] * (1 - (ratio - 0.3) / 0.4) + theme.bg_color2[2] * ((ratio - 0.3) / 0.4))
+                else:
+                    r = int(theme.bg_color[0])
+                    g = int(theme.bg_color[1] * (1 - (ratio - 0.7) / 0.3) + theme.bg_color[1] * ((ratio - 0.7) / 0.3))
+                    b = int(theme.bg_color2[2])
+                pygame.draw.line(self.screen, (r, g, b), (0, y), (width, y), 2)
+
+            # 光线效果（模拟阳光）
+            sun_x = int(width * 0.7)
+            sun_y = int(height * 0.2)
+            ray_count = 8
+            for i in range(ray_count):
+                ray_angle = math.pi * 0.1 * (i - ray_count / 2) / ray_count
+                ray_length = int(height * 0.6)
+                ray_end_x = sun_x + int(math.sin(ray_angle) * ray_length)
+                ray_end_y = sun_y + ray_length
+
+                # 绘制渐变光线
+                for j in range(20):
+                    alpha = int(15 * (1 - j / 20))
+                    t = j / 20
+                    ray_x1 = int(sun_x + (ray_end_x - sun_x) * t)
+                    ray_y1 = int(sun_y + (ray_end_y - sun_y) * t)
+                    ray_x2 = int(sun_x + (ray_end_x - sun_x) * (t + 0.05))
+                    ray_y2 = int(sun_y + (ray_end_y - sun_y) * (t + 0.05))
+
+                    s = pygame.Surface((abs(ray_x2 - ray_x1) + 10, 3), pygame.SRCALPHA)
+                    s.fill((*theme.text_highlight, alpha))
+                    self.screen.blit(s, (min(ray_x1, ray_x2) - 5, ray_y1))
 
         else:
             # 默认纯色背景
@@ -2385,32 +2651,200 @@ class Tetris:
         return tuple(tuple(row) for row in piece)
 
     def draw_3d_block(self, rect, color_index):
-        """绘制3D方块 - 使用主题配色"""
+        """绘制3D方块 - 为每个主题应用独特的渲染风格"""
         # 使用主题配色方案
         main_color = self.current_theme.piece_colors[color_index]
         highlight = self.current_theme.highlight_colors[color_index]
         shadow = self.current_theme.shadow_colors[color_index]
 
-        # 霓虹发光效果
-        if self.neon_mode:
-            glow_surface = pygame.Surface((rect.width + 20, rect.height + 20), pygame.SRCALPHA)
-            pygame.draw.rect(glow_surface, (*main_color, 50),
-                           (10, 10, rect.width, rect.height))
-            self.screen.blit(glow_surface, (rect.x - 10, rect.y - 10))
+        theme_name = self.current_theme.name
 
-        # 主方块
-        main_rect = pygame.Rect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4)
-        pygame.draw.rect(self.screen, main_color, main_rect)
+        # ==================== 主题专属渲染风格 ====================
 
-        # 高光和阴影
-        pygame.draw.line(self.screen, highlight,
-                        (rect.x + 2, rect.y + 2), (rect.right - 2, rect.y + 2), 3)
-        pygame.draw.line(self.screen, highlight,
-                        (rect.x + 2, rect.y + 2), (rect.x + 2, rect.bottom - 2), 3)
-        pygame.draw.line(self.screen, shadow,
-                        (rect.x + 2, rect.bottom - 2), (rect.right - 2, rect.bottom - 2), 3)
-        pygame.draw.line(self.screen, shadow,
-                        (rect.right - 2, rect.y + 2), (rect.right - 2, rect.bottom - 2), 3)
+        if theme_name == "neon_city":
+            # 🌆 霓虹城市 - 赛博朋克风格：强发光 + 扫描线
+            if self.neon_mode:
+                # 多层发光效果
+                for i in range(3, 0, -1):
+                    glow_size = i * 6
+                    glow_alpha = 15 - i * 4
+                    glow_surface = pygame.Surface((rect.width + glow_size * 2, rect.height + glow_size * 2), pygame.SRCALPHA)
+                    pygame.draw.rect(glow_surface, (*main_color, glow_alpha),
+                                   (glow_size, glow_size, rect.width, rect.height))
+                    self.screen.blit(glow_surface, (rect.x - glow_size, rect.y - glow_size))
+
+            # 主方块 - 带数字网格纹理
+            main_rect = pygame.Rect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4)
+            pygame.draw.rect(self.screen, main_color, main_rect)
+
+            # 添加赛博朋克风格的数字纹理
+            if rect.width > 15:
+                grid_color = (*highlight, 100) if len(highlight) == 4 else (*highlight, 100)
+                for i in range(2, int(rect.width) - 2, 4):
+                    pygame.draw.line(self.screen, grid_color,
+                                   (rect.x + i, rect.y + 2),
+                                   (rect.x + i, rect.bottom - 2), 1)
+
+            # 亮边框
+            pygame.draw.rect(self.screen, highlight, main_rect, 2)
+
+        elif theme_name == "space_scifi":
+            # 🚀 太空科幻 - 神秘风格：柔和光晕 + 星点
+            # 柔和外发光
+            if self.neon_mode:
+                glow_surface = pygame.Surface((rect.width + 12, rect.height + 12), pygame.SRCALPHA)
+                pygame.draw.rect(glow_surface, (*main_color, 40),
+                               (6, 6, rect.width, rect.height))
+                self.screen.blit(glow_surface, (rect.x - 6, rect.y - 6))
+
+            # 主方块 - 圆角
+            main_rect = pygame.Rect(rect.x + 3, rect.y + 3, rect.width - 6, rect.height - 6)
+            pygame.draw.rect(self.screen, main_color, main_rect, border_radius=3)
+
+            # 添加星点装饰
+            if rect.width > 15:
+                star_positions = [(rect.x + 6, rect.y + 6), (rect.right - 6, rect.bottom - 6)]
+                for sx, sy in star_positions:
+                    pygame.draw.circle(self.screen, (255, 255, 255, 150), (sx, sy), 1)
+
+            # 柔和边框
+            pygame.draw.rect(self.screen, highlight, main_rect, 1, border_radius=3)
+
+        elif theme_name == "retro_pixel":
+            # 👾 复古像素 - 8-bit风格：硬边 + 高对比
+            # 无发光，纯像素风格
+            main_rect = pygame.Rect(rect.x + 1, rect.y + 1, rect.width - 2, rect.height - 2)
+            pygame.draw.rect(self.screen, main_color, main_rect)
+
+            # 高对比边框（黑色）
+            pygame.draw.rect(self.screen, (0, 0, 0), main_rect, 2)
+
+            # 内部高光（像素感）
+            pygame.draw.rect(self.screen, highlight,
+                           (rect.x + 3, rect.y + 3, 4, 4))
+            pygame.draw.rect(self.screen, shadow,
+                           (rect.right - 7, rect.bottom - 7, 4, 4))
+
+        elif theme_name == "ocean_world":
+            # 🌊 海洋世界 - 流畅风格：圆角 + 波浪纹理
+            if self.neon_mode:
+                # 水波纹发光
+                glow_surface = pygame.Surface((rect.width + 10, rect.height + 10), pygame.SRCALPHA)
+                for i in range(3):
+                    offset = i * 3
+                    pygame.draw.rect(glow_surface, (*main_color, 20 - i * 5),
+                                   (5 + offset, 5 + offset, rect.width - offset * 2, rect.height - offset * 2),
+                                   border_radius=4)
+                self.screen.blit(glow_surface, (rect.x - 5, rect.y - 5))
+
+            # 主方块 - 大圆角
+            main_rect = pygame.Rect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4)
+            pygame.draw.rect(self.screen, main_color, main_rect, border_radius=6)
+
+            # 波浪纹理
+            if rect.width > 15:
+                wave_color = (*highlight, 80) if len(highlight) == 4 else (*highlight, 80)
+                mid_y = rect.centery
+                for x in range(rect.left + 4, rect.right - 4, 3):
+                    wave_offset = math.sin((x - rect.left) * 0.3) * 2
+                    pygame.draw.circle(self.screen, wave_color, (x, int(mid_y + wave_offset)), 1)
+
+            # 柔和边框
+            pygame.draw.rect(self.screen, highlight, main_rect, 2, border_radius=6)
+
+        elif theme_name == "sunset_dusk":
+            # 🌅 日落黄昏 - 温暖风格：渐变 + 柔和光晕
+            if self.neon_mode:
+                # 温暖渐变发光
+                glow_surface = pygame.Surface((rect.width + 8, rect.height + 8), pygame.SRCALPHA)
+                # 多层渐变
+                colors_grad = [
+                    (*main_color, 50),
+                    (*highlight, 30),
+                    (*shadow, 20)
+                ]
+                for i, color in enumerate(colors_grad):
+                    offset = i * 2
+                    pygame.draw.rect(glow_surface, color,
+                                   (4 - offset, 4 - offset, rect.width + offset * 2, rect.height + offset * 2),
+                                   border_radius=5)
+                self.screen.blit(glow_surface, (rect.x - 4, rect.y - 4))
+
+            # 主方块 - 柔和圆角
+            main_rect = pygame.Rect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4)
+            pygame.draw.rect(self.screen, main_color, main_rect, border_radius=5)
+
+            # 日落渐变效果（垂直渐变）
+            if rect.height > 10:
+                grad_surface = pygame.Surface((rect.width - 8, rect.height - 8), pygame.SRCALPHA)
+                for y in range(0, rect.height - 8, 2):
+                    ratio = y / (rect.height - 8)
+                    grad_color = (
+                        int(main_color[0] * (1 - ratio) + highlight[0] * ratio),
+                        int(main_color[1] * (1 - ratio) + highlight[1] * ratio),
+                        int(main_color[2] * (1 - ratio) + highlight[2] * ratio),
+                        100
+                    )
+                    pygame.draw.line(grad_surface, grad_color,
+                                   (0, y), (rect.width - 8, y), 2)
+                self.screen.blit(grad_surface, (rect.x + 4, rect.y + 4))
+
+            # 温暖边框
+            pygame.draw.rect(self.screen, highlight, main_rect, 2, border_radius=5)
+
+        elif theme_name == "forest_mystic":
+            # 🌲 森林秘境 - 自然风格：有机形状 + 叶子纹理
+            if self.neon_mode:
+                # 自然有机发光
+                glow_surface = pygame.Surface((rect.width + 14, rect.height + 14), pygame.SRCALPHA)
+                # 不规则形状发光
+                for i in range(4):
+                    offset = [i * 3, i * 3, (3-i) * 3, (3-i) * 3][i % 4]
+                    alpha = 25 - i * 5
+                    pygame.draw.rect(glow_surface, (*main_color, alpha),
+                                   (7 - offset, 7 - offset, rect.width + offset * 2, rect.height + offset * 2),
+                                   border_radius=8 - i)
+                self.screen.blit(glow_surface, (rect.x - 7, rect.y - 7))
+
+            # 主方块 - 自然圆角
+            main_rect = pygame.Rect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4)
+            pygame.draw.rect(self.screen, main_color, main_rect, border_radius=7)
+
+            # 叶子纹理
+            if rect.width > 15:
+                leaf_color = (*highlight, 90) if len(highlight) == 4 else (*highlight, 90)
+                # 绘制简单的叶子形状
+                leaf_center = (rect.centerx, rect.centery)
+                pygame.draw.ellipse(self.screen, leaf_color,
+                                   (leaf_center[0] - 4, leaf_center[1] - 3, 8, 6))
+                pygame.draw.line(self.screen, leaf_color,
+                               (leaf_center[0], leaf_center[1] - 3),
+                               (leaf_center[0], leaf_center[1] + 3), 1)
+
+            # 自然边框
+            pygame.draw.rect(self.screen, highlight, main_rect, 2, border_radius=7)
+
+        else:
+            # 默认风格 - 标准渲染
+            if self.neon_mode:
+                glow_surface = pygame.Surface((rect.width + 20, rect.height + 20), pygame.SRCALPHA)
+                pygame.draw.rect(glow_surface, (*main_color, 50),
+                               (10, 10, rect.width, rect.height))
+                self.screen.blit(glow_surface, (rect.x - 10, rect.y - 10))
+
+            # 主方块
+            main_rect = pygame.Rect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4)
+            pygame.draw.rect(self.screen, main_color, main_rect)
+
+            # 高光和阴影
+            pygame.draw.line(self.screen, highlight,
+                            (rect.x + 2, rect.y + 2), (rect.right - 2, rect.y + 2), 3)
+            pygame.draw.line(self.screen, highlight,
+                            (rect.x + 2, rect.y + 2), (rect.x + 2, rect.bottom - 2), 3)
+            pygame.draw.line(self.screen, shadow,
+                            (rect.x + 2, rect.bottom - 2), (rect.right - 2, rect.bottom - 2), 3)
+            pygame.draw.line(self.screen, shadow,
+                            (rect.right - 2, rect.y + 2), (rect.right - 2, rect.bottom - 2), 3)
 
     def draw_grid(self):
         """绘制游戏网格 - 使用主题配色"""
@@ -2494,13 +2928,20 @@ class Tetris:
             ghost_y += 1
         return ghost_y
 
-    def draw_ghost_piece(self):
-        """绘制幽灵方块 - 方案C: 多层幽灵方块"""
+    def draw_ghost_piece(self, grid_x=None, grid_y=None):
+        """绘制主题化幽灵方块 - 为每个主题应用独特的幽灵效果
+
+        Args:
+            grid_x: 可选的网格X坐标（用于震动模式）
+            grid_y: 可选的网格Y坐标（用于震动模式）
+        """
         if self.game_over or self.waiting_to_start or self.countdown_active or not self.show_ghost:
             return
 
-        grid_x, grid_y = self.get_scaled_offset(GRID_X_OFFSET, GRID_Y_OFFSET)
+        if grid_x is None or grid_y is None:
+            grid_x, grid_y = self.get_scaled_offset(GRID_X_OFFSET, GRID_Y_OFFSET)
         block_size = self.get_scaled_size(BLOCK_SIZE)
+        theme_name = self.current_theme.name
 
         # 计算幽灵方块位置
         ghost_y = self.get_ghost_piece_y(self.current_piece, self.current_y)
@@ -2515,27 +2956,132 @@ class Tetris:
                     )
 
                     # 获取方块颜色
-                    main_color = COLORS[cell]
+                    main_color = self.current_theme.piece_colors[cell]
+                    highlight = self.current_theme.highlight_colors[cell]
 
-                    # 第一层（底层）：灰色半透明 (30% alpha)
-                    s1 = pygame.Surface((block_size, block_size), pygame.SRCALPHA)
-                    s1.fill((100, 100, 100, 76))  # 30% alpha
-                    self.screen.blit(s1, rect.topleft)
+                    # ==================== 主题专属幽灵方块样式 ====================
 
-                    # 第二层（中层）：当前方块颜色半透明 (20% alpha)
-                    s2 = pygame.Surface((block_size, block_size), pygame.SRCALPHA)
-                    s2.fill((*main_color, 51))  # 20% alpha
-                    self.screen.blit(s2, rect.topleft)
+                    if theme_name == "neon_city":
+                        # 🌆 霓虹城市 - 全息投影风格
+                        ghost_surface = pygame.Surface((block_size, block_size), pygame.SRCALPHA)
+                        # 多层全息效果
+                        for i in range(3):
+                            holo_alpha = 15 - i * 4
+                            offset = i * 2
+                            pygame.draw.rect(ghost_surface, (*main_color, holo_alpha),
+                                           (offset, offset, block_size - offset * 2, block_size - offset * 2))
 
-                    # 第三层（顶层）：白色边框 (50% alpha)
-                    pygame.draw.rect(self.screen, (255, 255, 255, 128), rect, 2)
+                        # 扫描线效果
+                        scan_y = int((pygame.time.get_ticks() * 0.1) % block_size)
+                        pygame.draw.rect(ghost_surface, (*highlight, 40),
+                                       (0, scan_y, block_size, 2))
 
-                    # 霓虹模式下发光
-                    if self.neon_mode:
-                        glow_surface = pygame.Surface((rect.width + 10, rect.height + 10), pygame.SRCALPHA)
-                        pygame.draw.rect(glow_surface, (*main_color, 30),
-                                       (5, 5, rect.width, rect.height))
-                        self.screen.blit(glow_surface, (rect.x - 5, rect.y - 5))
+                        # 数字边框
+                        pygame.draw.rect(ghost_surface, (*main_color, 80),
+                                       (0, 0, block_size, block_size), 1)
+
+                        # 虚线网格
+                        for i in range(0, block_size, 4):
+                            pygame.draw.line(ghost_surface, (*highlight, 30),
+                                           (i, 0), (i, block_size), 1)
+
+                        self.screen.blit(ghost_surface, rect.topleft)
+
+                    elif theme_name == "space_scifi":
+                        # 🚀 太空科幻 - 星云投影风格
+                        ghost_surface = pygame.Surface((block_size, block_size), pygame.SRCALPHA)
+                        # 柔和星云效果
+                        pygame.draw.rect(ghost_surface, (*main_color, 35),
+                                       (0, 0, block_size, block_size), border_radius=4)
+
+                        # 内层虚线
+                        pygame.draw.rect(ghost_surface, (*highlight, 60),
+                                       (3, 3, block_size - 6, block_size - 6), 1, border_radius=2)
+
+                        # 星点装饰
+                        if block_size > 15:
+                            pygame.draw.circle(ghost_surface, (255, 255, 255, 100), (5, 5), 1)
+                            pygame.draw.circle(ghost_surface, (255, 255, 255, 100),
+                                             (block_size - 5, block_size - 5), 1)
+
+                        self.screen.blit(ghost_surface, rect.topleft)
+
+                    elif theme_name == "retro_pixel":
+                        # 👾 复古像素 - 通透风格
+                        ghost_surface = pygame.Surface((block_size, block_size), pygame.SRCALPHA)
+
+                        # 很淡的填充
+                        ghost_surface.fill((*main_color, 50))
+
+                        # 简单边框
+                        pygame.draw.rect(ghost_surface, (*main_color, 100),
+                                       (0, 0, block_size, block_size), 2)
+
+                        self.screen.blit(ghost_surface, rect.topleft)
+
+                    elif theme_name == "ocean_world":
+                        # 🌊 海洋世界 - 通透风格
+                        ghost_surface = pygame.Surface((block_size, block_size), pygame.SRCALPHA)
+
+                        # 很淡的蓝色填充
+                        ghost_surface.fill((*main_color, 50))
+
+                        # 简单圆角边框
+                        pygame.draw.rect(ghost_surface, (*main_color, 100),
+                                       (0, 0, block_size, block_size), 2, border_radius=6)
+
+                        self.screen.blit(ghost_surface, rect.topleft)
+
+                    elif theme_name == "sunset_dusk":
+                        # 🌅 日落黄昏 - 完整版本
+                        ghost_surface = pygame.Surface((block_size, block_size), pygame.SRCALPHA)
+
+                        # 基础填充
+                        ghost_surface.fill((*main_color, 80))
+
+                        # 多层光晕效果
+                        for i in range(3):
+                            alpha = 20 - i * 5
+                            offset = i * 2
+                            pygame.draw.rect(ghost_surface, (*main_color, alpha),
+                                           (offset, offset, block_size - offset * 2, block_size - offset * 2),
+                                           border_radius=5)
+
+                        # 边框
+                        pygame.draw.rect(ghost_surface, (*main_color, 100),
+                                       (0, 0, block_size, block_size), 2, border_radius=5)
+
+                        # 内部阴影渐变（使用不同的变量名避免冲突）
+                        if block_size > 10:
+                            for line_y in range(0, block_size - 8, 2):
+                                ratio = line_y / (block_size - 8)
+                                alpha = int(15 * (1 - ratio))
+                                pygame.draw.line(ghost_surface, (*highlight, alpha),
+                                               (4, line_y + 4), (block_size - 4, line_y + 4), 2)
+
+                        self.screen.blit(ghost_surface, rect.topleft)
+
+                    elif theme_name == "forest_mystic":
+                        # 🌲 森林秘境 - 通透风格
+                        ghost_surface = pygame.Surface((block_size, block_size), pygame.SRCALPHA)
+
+                        # 很淡的绿色填充
+                        ghost_surface.fill((*main_color, 50))
+
+                        # 简单圆角边框
+                        pygame.draw.rect(ghost_surface, (*main_color, 100),
+                                       (0, 0, block_size, block_size), 2, border_radius=6)
+
+                        self.screen.blit(ghost_surface, rect.topleft)
+
+                    else:
+                        # 默认幽灵方块样式
+                        ghost_surface = pygame.Surface((block_size, block_size), pygame.SRCALPHA)
+                        ghost_surface.fill((*main_color, 80))
+                        # 白色边框
+                        pygame.draw.rect(ghost_surface, (255, 255, 255, 150),
+                                       (0, 0, block_size, block_size), 2)
+                        self.screen.blit(ghost_surface, rect.topleft)
 
     def draw_statistics_panel(self):
         """绘制统计面板 - 方案A: 弹窗式"""
@@ -3305,6 +3851,9 @@ class Tetris:
                             self.current_theme = theme
                             # 重新生成背景音乐
                             self.sound_manager.generate_background_music(self.current_theme)
+                            # 如果音乐已启用，重新播放音乐
+                            if self.sound_manager.music_enabled:
+                                self.sound_manager.play_music()
                             # 更新AnimationManager的主题
                             self.animation_manager.theme = self.current_theme
                             # 播放确认音效
@@ -4079,6 +4628,10 @@ class Tetris:
                         # 重新生成背景音乐（使用新主题）
                         self.sound_manager.generate_background_music(self.current_theme)
 
+                        # 如果音乐已启用，重新播放音乐
+                        if self.sound_manager.music_enabled:
+                            self.sound_manager.play_music()
+
                         # 更新AnimationManager的主题
                         self.animation_manager.theme = self.current_theme
 
@@ -4328,7 +4881,7 @@ class Tetris:
                     if not self.game_over and not self.waiting_to_start and not self.countdown_active:
                         # 恢复无震动偏移的坐标
                         grid_x_unshook, grid_y_unshook = self.get_scaled_offset(GRID_X_OFFSET, GRID_Y_OFFSET)
-                        self.draw_ghost_piece()
+                        self.draw_ghost_piece(grid_x_unshook, grid_y_unshook)
 
                     # 绘制当前方块
                     if not self.game_over and not self.waiting_to_start and not self.countdown_active:
