@@ -42,3 +42,15 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Build outputs
+*.exe
+*.bin
+release/
+*.dist/
+*.build/
+*.onefile-build/
+
+# Nuitka specific
+*.Nuitka
+*.deployment/
