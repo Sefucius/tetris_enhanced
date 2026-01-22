@@ -35,9 +35,9 @@ NUITKA_OPTIONS = [
     "--standalone",                    # 独立可执行文件
     "--onefile",                       # 打包成单个exe文件
     "--windows-disable-console",       # 禁用控制台窗口
-    "--enable-plugin=pygame",          # 启用Pygame插件
+    # "--enable-plugin=pygame",        # 移除：Nuitka 2.x 不再需要单独的 pygame 插件
     "--include-package=dataclasses",   # 包含dataclasses模块
-    "--include-module=pygame",         # 包含pygame模块
+    "--include-package=pygame",        # 包含pygame包（新版用 --include-package）
 
     # 性能优化选项
     "--follow-imports",                # 跟随所有导入
@@ -48,9 +48,6 @@ NUITKA_OPTIONS = [
 
     # 其他选项
     "--assume-yes-for-downloads",      # 自动确认下载依赖
-    "--show-progress",                 # 显示进度
-    "--show-memory",                   # 显示内存使用
-    "--no-progressbar-disable",        # 不禁用进度条
 ]
 
 # ==================== 函数 ====================
@@ -67,15 +64,16 @@ def check_nuitka():
     """检查是否安装了Nuitka"""
     print("🔍 检查 Nuitka...")
     try:
-        result = subprocess.run(
-            [sys.executable, "-m", "Nuitka", "--version"],
-            capture_output=True,
-            text=True
-        )
-        if result.returncode == 0:
-            print(f"✅ Nuitka 已安装: {result.stdout.strip()}")
-            return True
-    except Exception:
+        import nuitka
+        # 尝试获取版本
+        try:
+            from nuitka.Version import getNuitkaVersion
+            version = getNuitkaVersion()
+            print(f"✅ Nuitka 已安装: {version}")
+        except:
+            print(f"✅ Nuitka 已安装")
+        return True
+    except ImportError:
         pass
 
     print("❌ Nuitka 未安装")
@@ -137,8 +135,9 @@ def build_executable():
     print(f"\n🚀 开始构建可执行文件...")
     print("=" * 70)
 
-    # 构建命令
-    cmd = [sys.executable, "-m", "Nuitka"] + NUITKA_OPTIONS + [MAIN_SCRIPT]
+    # 构建命令 - 直接使用 Python 调用 nuitka
+    nuitka_args = NUITKA_OPTIONS + [MAIN_SCRIPT]
+    cmd = [sys.executable, "-m", "nuitka"] + nuitka_args
 
     print("执行命令:")
     print(" ".join(cmd))
